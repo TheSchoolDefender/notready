@@ -1,5 +1,5 @@
-<html><head>
-    <title>NotReady for Iready</title>
+<html><head
+    <title>NotReady Assessment - Practice for Iready</title>
     <style>
         * {
             box-sizing: border-box;
@@ -467,63 +467,11 @@ let isReading = false;
 let voiceInitialized = false;
 let totalArticles = 10;
 let questionsPerArticle = 25;
-function showPassage(passage) {
-  const passageContainer = document.getElementById('passage-container');
-  passageContainer.innerHTML = `
-        <h2>${passage.title}</h2>
-        ${passage.paragraphs.map((para, idx) => `
-            <div class="paragraph">
-                <span class="paragraph-number">[${idx + 1}]</span>
-                ${para}
-            </div>
-        `).join('')}
-    `;
-}
-function showQuestion(question, questionNumber) {
-  const questionContainer = document.getElementById('question-container');
-  const questionCounter = document.querySelector('.question-counter');
-  questionCounter.textContent = `Question ${questionNumber + 1} of ${questionsPerArticle}`;
-  if (questionNumber >= questionsPerArticle) {
-    currentQuestion = 0;
-    currentEssay++;
-    if (currentEssay >= totalArticles) {
-      document.querySelector('.reading-screen').style.display = 'none';
-      document.querySelector('.result-screen').style.display = 'block';
-      const lexile = calculateLexile();
-      document.querySelector('.lexile-result').innerHTML = `
-            <h3>Your Lexile Score: ${lexile}L</h3>
-            <p>Based on grade ${selectedGrade} level assessment</p>
-            <p>You answered ${answers.filter(a => a === 1).length} out of ${totalArticles * questionsPerArticle} questions correctly.</p>
-        `;
-      return;
-    }
-    startAssessment();
-    return;
-  }
-  questionContainer.innerHTML = `
-        <div class="question">
-            <p>${question.text}</p>
-            <div class="options">
-                ${question.options.map((opt, i) => `
-                    <div class="option" data-index="${i}">${opt}</div>
-                `).join('')}
-            </div>
-        </div>
-    `;
-  document.querySelectorAll('.option').forEach(option => {
-    option.addEventListener('click', function () {
-      document.querySelectorAll('.option').forEach(opt => opt.classList.remove('selected'));
-      this.classList.add('selected');
-    });
-  });
-  const progress = Math.round((currentEssay * questionsPerArticle + questionNumber) / (totalArticles * questionsPerArticle) * 100);
-  document.querySelector('.progress').style.width = `${progress}%`;
-  document.querySelector('.progress-bar').setAttribute('data-progress', progress);
-}
 async function generatePassageWithQuestions(grade) {
   const readingLevel = grade <= 5 ? 'advanced elementary' : grade <= 8 ? 'advanced middle school' : 'college preparatory';
   const topics = ['quantum physics and parallel universes', 'philosophical paradoxes and moral dilemmas', 'advanced technological innovations', 'complex mythological interconnections', 'psychological thrillers and mysteries', 'socio-political commentary through fiction', 'abstract mathematical concepts in nature', 'biochemistry and genetic engineering', 'theoretical astrophysics', 'archaeological discoveries and historical revisionism'];
   const randomTopic = topics[Math.floor(Math.random() * topics.length)];
+
   try {
     const response = await fetch('/api/ai_completion', {
       method: 'POST',
@@ -549,70 +497,175 @@ async function generatePassageWithQuestions(grade) {
                 - Incorporates multiple layers of meaning
                 - Challenges readers with sophisticated themes
                 
-                interface Response {
-                    title: string;
-                    paragraphs: string[];
-                    questions: Array<{
-                        paragraphIndex: number;
-                        text: string;
-                        options: string[];
-                        correct: number;
-                    }>;
+                Response format should be a JSON object with:
+                {
+                    "title": "string",
+                    "paragraphs": ["string"],
+                    "questions": [{
+                        "paragraphIndex": number,
+                        "text": "string",
+                        "options": ["string"],
+                        "correct": number
+                    }]
                 }`,
         data: `Target grade level: ${grade + 2}`
       })
     });
+
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+
     const data = await response.json();
+
+    // Provide default data if API fails
+    if (!data || !data.title || !data.paragraphs || !data.questions) {
+      return {
+        title: "Sample Reading Passage",
+        paragraphs: ["If you're seeing this text, there was an error generating the passage. Please try again."],
+        questions: [{
+          paragraphIndex: 0,
+          text: "Sample question",
+          options: ["Option A", "Option B", "Option C", "Option D"],
+          correct: 0
+        }]
+      };
+    }
+
     return data;
   } catch (error) {
     console.error('Error generating passage:', error);
-    return null;
+    // Return default data in case of error
+    return {
+      title: "Sample Reading Passage",
+      paragraphs: ["An error occurred while generating the passage. Please try again."],
+      questions: [{
+        paragraphIndex: 0,
+        text: "Sample question",
+        options: ["Option A", "Option B", "Option C", "Option D"],
+        correct: 0
+      }]
+    };
   }
 }
+
+function showPassage(passage) {
+  if (!passage || !passage.paragraphs) {
+    console.error('Invalid passage data');
+    return;
+  }
+
+  const passageContainer = document.getElementById('passage-container');
+  passageContainer.innerHTML = `
+    <h2>${passage.title || 'Reading Passage'}</h2>
+    ${passage.paragraphs.map((para, idx) => `
+      <div class="paragraph">
+        <span class="paragraph-number">[${idx + 1}]</span>
+        ${para}
+      </div>
+    `).join('')}
+  `;
+}
+
+function showQuestion(question, questionNumber) {
+  if (!question) {
+    console.error('Invalid question data');
+    return;
+  }
+
+  const questionContainer = document.getElementById('question-container');
+  const questionCounter = document.querySelector('.question-counter');
+  
+  if (questionCounter) {
+    questionCounter.textContent = `Question ${questionNumber + 1} of ${questionsPerArticle}`;
+  }
+
+  questionContainer.innerHTML = `
+        <div class="question">
+            <p>${question.text}</p>
+            <div class="options">
+                ${question.options.map((opt, i) => `
+                    <div class="option" data-index="${i}">${opt}</div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+  document.querySelectorAll('.option').forEach(option => {
+    option.addEventListener('click', function () {
+      document.querySelectorAll('.option').forEach(opt => opt.classList.remove('selected'));
+      this.classList.add('selected');
+    });
+  });
+  const progress = Math.round((currentEssay * questionsPerArticle + questionNumber) / (totalArticles * questionsPerArticle) * 100);
+  document.querySelector('.progress').style.width = `${progress}%`;
+  document.querySelector('.progress-bar').setAttribute('data-progress', progress);
+}
+
+async function startAssessment() {
+  try {
+    const loadingHtml = `
+      <div class="loading">
+        <div class="loading-spinner"></div>
+        <p>Generating passage and questions...</p>
+      </div>
+    `;
+    
+    document.getElementById('passage-container').innerHTML = loadingHtml;
+    document.getElementById('question-container').innerHTML = '';
+
+    currentPassage = await generatePassageWithQuestions(selectedGrade);
+    
+    if (currentPassage) {
+      document.querySelector('.essay-counter').textContent = `Essay ${currentEssay + 1} of ${totalArticles}`;
+      showPassage(currentPassage);
+      showQuestion(currentPassage.questions[0], 0);
+    } else {
+      throw new Error('Failed to generate passage');
+    }
+  } catch (error) {
+    console.error('Error in startAssessment:', error);
+    document.getElementById('passage-container').innerHTML = `
+      <div class="error-message">
+        <p>An error occurred while generating the assessment. Please try again.</p>
+        <button onclick="startAssessment()">Retry</button>
+      </div>
+    `;
+  }
+}
+
 function calculateLexile() {
   const baseScore = selectedGrade * 150 + 400;
   const correctAnswers = answers.reduce((acc, curr) => acc + (curr === 1 ? 1 : 0), 0);
   const difficultyBonus = Math.floor(correctAnswers / (totalArticles * questionsPerArticle) * 200);
   return baseScore + correctAnswers * 6 + difficultyBonus;
 }
+
 document.querySelector('.start-btn').addEventListener('click', () => {
   document.querySelector('.start-screen').style.display = 'none';
   document.querySelector('.grade-screen').style.display = 'block';
 });
+
 const gradeSlider = document.getElementById('grade-slider');
 const gradeValue = document.getElementById('grade-value');
 gradeSlider.addEventListener('input', e => {
   selectedGrade = e.target.value;
   gradeValue.textContent = selectedGrade;
 });
+
 const articleSlider = document.getElementById('article-slider');
 const articleValue = document.getElementById('article-value');
 articleSlider.addEventListener('input', e => {
   totalArticles = parseInt(e.target.value);
   articleValue.textContent = totalArticles;
 });
+
 const questionsSlider = document.getElementById('questions-slider');
 const questionsValue = document.getElementById('questions-value');
 questionsSlider.addEventListener('input', e => {
   questionsPerArticle = parseInt(e.target.value);
   questionsValue.textContent = questionsPerArticle;
 });
-async function startAssessment() {
-  const loadingHtml = `
-        <div class="loading">
-            <div class="loading-spinner"></div>
-            <p>Generating passage and questions...</p>
-        </div>
-    `;
-  document.getElementById('passage-container').innerHTML = loadingHtml;
-  document.getElementById('question-container').innerHTML = '';
-  currentPassage = await generatePassageWithQuestions(selectedGrade);
-  if (currentPassage) {
-    document.querySelector('.essay-counter').textContent = `Essay ${currentEssay + 1} of ${totalArticles}`;
-    showPassage(currentPassage);
-    showQuestion(currentPassage.questions[0], 0);
-  }
-}
+
 document.querySelectorAll('.next-btn').forEach(btn => {
   btn.addEventListener('click', async () => {
     if (document.querySelector('.grade-screen').style.display === 'block') {
@@ -662,6 +715,7 @@ document.querySelectorAll('.next-btn').forEach(btn => {
     }
   });
 });
+
 function createStar() {
   const star = document.createElement('div');
   star.className = 'star';
@@ -672,7 +726,9 @@ function createStar() {
     star.remove();
   });
 }
+
 setInterval(createStar, 300);
+
 function getLexileGradeLevel(lexile) {
   const gradeLevels = {
     0: 'Beginning Kindergarten',
@@ -713,6 +769,7 @@ function getLexileGradeLevel(lexile) {
     gradeLevel,
     status
   };
-}</script>
+}
+</script>
 </body>
 </html>
